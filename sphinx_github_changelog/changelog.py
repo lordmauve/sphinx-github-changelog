@@ -8,6 +8,8 @@ from docutils import nodes
 # https://github.com/tk0miya/docutils-stubs/issues/33
 from docutils.parsers.rst import Directive, directives  # type: ignore
 
+from sphinx_github_changelog.token import get_github_token
+
 
 class ChangelogError(Exception):
     pass
@@ -47,9 +49,16 @@ def compute_changelog(
     graphql_url: Optional[str] = None,
 ) -> List[nodes.Node]:
     if not token:
-        return no_token(changelog_url=options.get("changelog-url"))
+        github_url = options.get("github")
+        if github_url:
+            host = github_url.split("/")[2]
+            token = get_github_token(host)
+        if not token:
+            return no_token(changelog_url=options.get("changelog-url"))
 
     owner_repo = extract_github_repo_name(url=options["github"], root_url=root_url)
+    if not graphql_url:
+        graphql_url = get_github_graphql_url(options["github"])
     releases = extract_releases(
         owner_repo=owner_repo, token=token, graphql_url=graphql_url
     )
@@ -212,3 +221,64 @@ def github_call(url, token, query):
         raise ChangelogError(
             "Could not retrieve changelog from github: " + str(exc)
         ) from exc
+
+
+def get_github_graphql_url(github_url: str) -> str:
+    """
+    Derive the GitHub GraphQL URL from the provided GitHub URL.
+
+    Examples:
+    >>> get_github_graphql_url("https://github.com/")
+    'https://api.github.com/graphql'
+    >>> get_github_graphql_url("https://github.example.com/")
+    'https://github.example.com/api/graphql'
+    """
+    if github_url.startswith("https://github.com"):
+        return "https://api.github.com/graphql"
+    else:
+        return github_url.rstrip("/") + "/api/graphql"
+
+
+def get_repo_from_remotes() -> Optional[str]:
+    """
+    Identify the GitHub repo from the remote git URL, preferring the `upstream` remote and then `origin`.
+
+    Returns:
+        The GitHub repo URL if found, otherwise None.
+    """
+    import subprocess
+
+    try:
+        remotes = subprocess.check_output(["git", "remote", "-v"], text=True)
+        for line in remotes.splitlines():
+            if line.startswith("upstream"):
+                return remote_to_repo(line.split()[1])
+        for line in remotes.splitlines():
+            if line.startswith("origin"):
+                return remote_to_repo(line.split()[1])
+    except Exception:
+        pass
+
+    return None
+
+
+def remote_to_repo(remote_url: str) -> str:
+    """
+    Convert a git remote URL to a GitHub https:// URL.
+
+    Examples:
+    >>> remote_to_repo("git@github.com:owner/repo.git")
+    'https://github.com/owner/repo'
+    >>> remote_to_repo("https://github.com/owner/repo.git")
+    'https://github.com/owner/repo'
+    >>> remote_to_repo("git@github.example.com:owner/repo.git")
+    'https://github.example.com/owner/repo'
+    >>> remote_to_repo("https://github.example.com/owner/repo.git")
+    'https://github.example.com/owner/repo'
+    """
+    if remote_url.startswith("git@"):
+        return "https://" + remote_url[4:].replace(":", "/").rstrip(".git")
+    elif remote_url.startswith("https://"):
+        return remote_url.rstrip(".git")
+    else:
+        raise ValueError(f"Unsupported remote URL format: {remote_url}")

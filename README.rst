@@ -148,15 +148,15 @@ Extension options (``conf.py``)
   your token enough access to read the releases. Defaults to the value of the
   environment variable ``SPHINX_GITHUB_CHANGELOG_TOKEN``. If no value is
   provided, the build will still pass but the changelog will not be built, and
-  a link to the ``changelog-url`` will be displayed (if provided).
+  a link to the ``changelog-url`` will be displayed (if provided). The token can also be automatically retrieved using git credential helpers or the `gh` CLI if not set in the documentation configuration or as an environment variable. If neither fallback works, the existing behavior is maintained.
 
 - ``sphinx_github_changelog_root_repo`` (optional): Root url to the repository,
   defaults to "https://github.com/". Useful if you're using a self-hosted GitHub
-  instance.
+  instance. This can also be derived from the scheme and netloc of the parsed repo URL.
 
 - ``sphinx_github_changelog_graphql_url`` (optional): Url to graphql api, defaults
   to "https://api.github.com/graphql". Useful if you're using a self-hosted GitHub
-  instance.
+  instance. This can also be derived from the required ``:github:`` field in the ``.. changelog`` directive.
 
 .. _ReadTheDocs: https://readthedocs.org/
 

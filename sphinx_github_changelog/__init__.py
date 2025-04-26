@@ -1,7 +1,8 @@
 import os
+import functools
 
-from sphinx_github_changelog import changelog
 from sphinx_github_changelog import metadata as _metadata_module
+from sphinx_github_changelog.token import get_github_token
 
 __all__: list = []
 
@@ -17,7 +18,7 @@ __version__ = _metadata["version"]
 def setup(app):
     token_name = "sphinx_github_changelog_token"
     app.add_config_value(
-        name=token_name, default=os.environ.get(token_name.upper()), rebuild="html"
+        name=token_name, default=None, rebuild="html"
     )
     root_repo_name = "sphinx_github_changelog_root_repo"
     app.add_config_value(
